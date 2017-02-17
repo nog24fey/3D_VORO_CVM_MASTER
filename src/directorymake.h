@@ -1,3 +1,6 @@
+#ifndef DIRECTORYMAKE_H_
+#define DIRECTORYMAKE_H_ 1
+
 #include <cstdio>
 #include <sys/stat.h>
 
@@ -18,6 +21,8 @@ int directoryMake(char* dirname){
   }
   return return_code;
 }
+
+#endif
 
 
 

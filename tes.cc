@@ -4,7 +4,10 @@
 // Email    : chr@alum.mit.edu
 // Date     : August 30th 2011
   
-#include "voro++.hh"
+#include "./voro++/voro++.hh"
+#include "./src/directorymake.h"
+#include "./src/spaceutility.h"
+
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -22,7 +25,6 @@ using std::to_string;
 using std::sin;
 using std::cos;
 using std::sqrt;
-using std::min;
 
 using std::mt19937;
 using std::uniform_real_distribution;
@@ -50,19 +52,6 @@ const int particles=4*4*4;
  
 // This function returns a random double between 0 and 1
 //double rnd() {return double(rand())/RAND_MAX;}
-
-double squaredDistanceForMSD(double x, double y, double z, double x0, double y0, double z0){
-  //double r2 = (x-x0)*(x-x0)+(y-y0)*(y-y0)+(z-z0)*(z-z0);
-  //if (r2<0.25*x_axe_leng*x_axe_leng) return sqrt(r2);
-
-  double fx = min(fabs(x-x0),fabs(x-x0-x_axe_leng));
-  fx = min(fx,fabs(x-x0-x_axe_leng));
-  double fy = min(fabs(y-y0),fabs(y-y0-y_axe_leng));
-  fy = min(fy,fabs(y-y0-y_axe_leng));
-  double fz = min(fabs(z-z0),fabs(z-z0-z_axe_leng));
-  fx = min(fz,fabs(z-z0-z_axe_leng));
-  return fx*fx+fy*fy+fz*fz;
-}
 
 int main(int argc, char **argv) {
   const int i_tarea = atoi(argv[1]);
@@ -246,7 +235,7 @@ int main(int argc, char **argv) {
       ofs<<time-msdstarttime<<" ";
       double meandiff = 0.0;
       for ( int i=0; i<particles; ++i) {
-	meandiff += squaredDistanceForMSD(x[i],y[i],z[i],x0[i],y0[i],z0[i]);
+	meandiff += squaredDistanceForMSD(x[i],y[i],z[i],x0[i],y0[i],z0[i],x_axe_leng,y_axe_leng,z_axe_leng);
       }
       meandiff /= (double)particles;
       ofs<<meandiff<<endl;
