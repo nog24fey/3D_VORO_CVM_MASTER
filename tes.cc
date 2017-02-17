@@ -1,3 +1,11 @@
+/*
+argv[1] directory name packing data files !!must be ended with "/" !!
+argv[2] directory name packing image files !!must be ended with "/" !!
+argv[3] target value of area; timed 0.01 
+argv[4] sample id; also used for random seed
+argv[5] 
+*/
+
 // Voronoi calculation example code
 //
 // Author   : Chris H. Rycroft (LBL / UC Berkeley)
@@ -28,7 +36,6 @@ using std::sqrt;
 
 using std::mt19937;
 using std::uniform_real_distribution;
-
 mt19937 mt;
 
 using namespace voro;
@@ -50,25 +57,36 @@ const int n_x=4,n_y=4,n_z=4;
 // Set the number of particles that are going to be randomly introduced
 const int particles=4*4*4;
  
-// This function returns a random double between 0 and 1
-//double rnd() {return double(rand())/RAND_MAX;}
 
 int main(int argc, char **argv) {
-  const int i_tarea = atoi(argv[1]);
+  //system parameters
+  const int i_tarea = atoi(argv[3]);
+  const int i_smpl = atoi(argv[4]);
   const double tarea = 0.01*(double)i_tarea;
+
+  //data packing directories
+  directoryMake(argv[1]);
+  directoryMake(argv[2]);
+  string datdirectoryname = argv[1];
+  string imagedirectoryname = argv[2];
+
+  //filename settings
   const string str_tarea = "ar"+to_string(i_tarea);
-  const int i_smpl = atoi(argv[2]);
   const string str_smpl = "sm"+to_string(i_smpl);
   const string str_param = str_tarea+str_smpl;
-  string str_msd(".dat");
-  str_msd = "MSD"+str_tarea+str_smpl+str_msd;
+
+  //open msd dat file
+  string str_msd = datdirectoryname+"MSD"+str_tarea+str_smpl+".dat";
   ofstream ofs;
   ofs.open(str_msd);
 
+  //initialize random function
   mt.seed(i_smpl);
   uniform_real_distribution<double> rnd(0.0,1.0);
-  
+
+  //spacetics
   double dpos = 0.01;
+  //internal variables
   vector<double> x(particles),y(particles),z(particles),theta(particles),phi(particles),r(particles,0.0001);
   vector<double> x0(particles),y0(particles),z0(particles);
   vector<double> xold(particles),yold(particles),zold(particles);
@@ -94,7 +112,7 @@ int main(int argc, char **argv) {
 
   con.print_custom("%i %v","packing.custom3");
 
-  int endtime = 5000;
+  int endtime = 5;
   int msdstarttime = endtime/20;
   for (int time = 0; time != endtime; ++time) {
 
@@ -251,22 +269,19 @@ int main(int argc, char **argv) {
     
     if (time%5 == 0) {
       string stime(to_string(time/5));
-      string str_p("point.gnu");
-      string str_tp = stime+str_param+str_p;
-      string str_v("edges.gnu");
-      string str_tv = stime+str_param+str_v;
-      don.draw_particles(str_tp.c_str());
-      don.draw_cells_gnuplot(str_tv.c_str());
+      string str_p = datdirectoryname+stime+str_param+"point.dat";
+      string str_v = datdirectoryname+stime+str_param+"edges.dat";
+      don.draw_particles(str_p.c_str());
+      don.draw_cells_gnuplot(str_v.c_str());
 
-      string str_pv("pointedges.png");
-      string str_tpvj = stime+str_param+str_pv;
+      string str_pvj = imagedirectoryname+stime+str_param+"pointedges.png";
       
       FILE* gp;
       gp = popen("gnuplot -persist","w");
       fprintf(gp, "set term png size 1200, 1200\n");
 
-      fprintf(gp, "set output \"%s\" \n", str_tpvj.c_str());
-      fprintf(gp, "sp [%f:%f][%f:%f][%f:%f]\"%s\" u 2:3:4 w p ps 2 pt 7 lc rgbcolor \"dark-green\" ti \"vpos\", \"%s\" u 1:2:3 w l lw 0.2 lc rgbcolor \"gray50\" ti \"edge\" \n", x_min, x_max, y_min, y_max, z_min, z_max, str_tp.c_str(), str_tv.c_str());
+      fprintf(gp, "set output \"%s\" \n", str_pvj.c_str());
+      fprintf(gp, "sp [%f:%f][%f:%f][%f:%f]\"%s\" u 2:3:4 w p ps 2 pt 7 lc rgbcolor \"dark-green\" ti \"vpos\", \"%s\" u 1:2:3 w l lw 0.2 lc rgbcolor \"gray50\" ti \"edge\" \n", x_min, x_max, y_min, y_max, z_min, z_max, str_p.c_str(), str_v.c_str());
       fprintf(gp, "set output\n");
       pclose(gp);
       

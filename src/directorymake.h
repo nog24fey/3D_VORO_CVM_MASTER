@@ -2,11 +2,11 @@
 #define DIRECTORYMAKE_H_ 1
 
 #include <cstdio>
+#include <cstdlib>
 #include <sys/stat.h>
 
-int directoryMake(char* dirname){
+void directoryMake(char* dirname) {
   /*0->success*/
-  int return_code = 0;
   struct stat st;
   if(stat(dirname,&st) != 0){
     if (mkdir(dirname, S_IRUSR | S_IWUSR | S_IXUSR |
@@ -16,10 +16,9 @@ int directoryMake(char* dirname){
     } else {
       printf("%s cannot be created\n", dirname);
       perror("");
-      return_code = 1;
+      exit(1);
     }
   }
-  return return_code;
 }
 
 #endif
