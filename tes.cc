@@ -41,9 +41,9 @@ mt19937 mt;
 using namespace voro;
   
 // Set up constants for the container geometry
-const double x_min=-2.0,x_max=2.0;
-const double y_min=-2.0,y_max=2.0;
-const double z_min=-2.0,z_max=2.0;
+const double x_min=-3.0,x_max=3.0;
+const double y_min=-3.0,y_max=3.0;
+const double z_min=-3.0,z_max=3.0;
 
 const double x_axe_leng = x_max-x_min;
 const double y_axe_leng = y_max-y_min;
@@ -52,10 +52,10 @@ const double z_axe_leng = z_max-z_min;
 const double cvol=x_axe_leng*y_axe_leng*z_axe_leng;
  
 // Set up the number of blocks that the container is divided into
-const int n_x=4,n_y=4,n_z=4;
+const int n_x=6,n_y=6,n_z=6;
  
 // Set the number of particles that are going to be randomly introduced
-const int particles=4*4*4;
+const int particles=6*6*6;
  
 
 int main(int argc, char **argv) {
@@ -76,10 +76,16 @@ int main(int argc, char **argv) {
   const string str_param = str_tarea+str_smpl;
 
   //open msd dat file
-  string str_msd = datdirectoryname+"MSD"+str_tarea+str_smpl+".dat";
-  ofstream ofs;
-  ofs.open(str_msd);
+  string str_msd = datdirectoryname+"MSD"+str_param+".dat";
+  ofstream msd;
+  msd.open(str_msd);
 
+  //open histgram dat file
+  string str_hst = datdirectoryname+"HST"+str_param+".dat";
+  ofstream hst;
+  hst.open(str_hst);
+  vector<double> hstdata(40,0.0);
+  
   //initialize random function
   mt.seed(i_smpl);
   uniform_real_distribution<double> rnd(0.0,1.0);
@@ -87,7 +93,7 @@ int main(int argc, char **argv) {
   //spacetics
   double dpos = 0.01;
   //internal variables
-  vector<double> x(particles),y(particles),z(particles),theta(particles),phi(particles),r(particles,0.0001);
+  vector<double> x(particles),y(particles),z(particles),theta(particles),phi(particles),r(particles,0.01);
   vector<double> x0(particles),y0(particles),z0(particles);
   vector<double> xold(particles),yold(particles),zold(particles);
   vector<double> xnew(particles),ynew(particles),znew(particles);
@@ -112,8 +118,10 @@ int main(int argc, char **argv) {
 
   con.print_custom("%i %v","packing.custom3");
 
-  int endtime = 5;
+  int endtime = 20000;
   int msdstarttime = endtime/20;
+  double hsttics = (double)(particles*(endtime-msdstarttime));
+  hsttics = 1.0/hsttics;
   for (int time = 0; time != endtime; ++time) {
 
     container eon(x_min,x_max,y_min,y_max,z_min,z_max,n_x,n_y,n_z,
@@ -122,21 +130,18 @@ int main(int argc, char **argv) {
     //(random+selfpropel)motion
     for (int i=0; i<particles; ++i) {
       //determine direction for selfpropel
-      double dh = 0.01*(rnd(mt)-0.5);
-      theta[i] += dh;
-      while (theta[i]<0.0) theta[i] += Pi;
-      while (theta[i]>=Pi) theta[i] -= Pi;
-      dh = 2.0*0.01*(rnd(mt)-0.5);
-      phi[i] += dh;
-      if (phi[i]<0.0) phi[i] += 2.0*Pi;
-      else if (phi[i]>=2.0*Pi) phi[i] -= 2.0*Pi;
+      double dh = Pi*rnd(mt);
+      theta[i] = dh;
+      //while (theta[i]<0.0) theta[i] += Pi;
+      //while (theta[i]>=Pi) theta[i] -= Pi;
+      dh = 2.0*Pi*rnd(mt);
+      phi[i] = dh;
+      //if (phi[i]<0.0) phi[i] += 2.0*Pi;
+      //else if (phi[i]>=2.0*Pi) phi[i] -= 2.0*Pi;
       //motion
-      double dd = 0.005*(2.0*rnd(mt)-1.0);
-      x[i] += dd + r[i]*sin(theta[i])*cos(phi[i]);
-      dd = 0.005*(2.0*rnd(mt)-1.0);
-      y[i] += dd + r[i]*sin(theta[i])*sin(phi[i]);
-      dd = 0.005*(2.0*rnd(mt)-1.0);
-      z[i] += dd + r[i]*cos(theta[i]);
+      x[i] += r[i]*sin(theta[i])*cos(phi[i]);
+      y[i] += r[i]*sin(theta[i])*sin(phi[i]);
+      z[i] += r[i]*cos(theta[i]);
       
       eon.put(i,x[i],y[i],z[i]);
     }
@@ -228,17 +233,12 @@ int main(int argc, char **argv) {
     for (int i = 0; i<particles; i++) {
       xold[i] = x[i]; yold[i] = y[i]; zold[i] = z[i];
       x[i] += xnew[i]; y[i] += ynew[i]; z[i] += znew[i];
-      while (x[i] < x_min) x[i] += x_axe_leng;
-      while (x[i] >= x_max) x[i] -= x_axe_leng;
-      while (y[i] < y_min) y[i] += y_axe_leng;
-      while (y[i] >= y_max) y[i] -= y_axe_leng;
-      while (z[i] < z_min) z[i] += z_axe_leng;
-      while (z[i] >= z_max) z[i] -= z_axe_leng;
       cx += x[i]-xold[i]; cy += y[i]-yold[i]; cz += z[i]-zold[i];
     }
     cx /= (double)particles; cy /= (double)particles; cz /= (double)particles;
     for (int i = 0; i<particles; i++) {
       x[i] -= cx; y[i] -= cy; z[i] -= cz;
+
       while (x[i] < x_min) x[i] += x_axe_leng;
       while (x[i] >= x_max) x[i] -= x_axe_leng;
       while (y[i] < y_min) y[i] += y_axe_leng;
@@ -250,13 +250,20 @@ int main(int argc, char **argv) {
     }
 
     if (time > msdstarttime) {
-      ofs<<time-msdstarttime<<" ";
-      double meandiff = 0.0;
+      msd<<time-msdstarttime<<" ";
+      double meandiff = 1.0;
       for ( int i=0; i<particles; ++i) {
-	meandiff += squaredDistanceForMSD(x[i],y[i],z[i],x0[i],y0[i],z0[i],x_axe_leng,y_axe_leng,z_axe_leng);
+	meandiff *= pow(squaredDistanceForMSD(x[i],y[i],z[i],x0[i],y0[i],z0[i],x_axe_leng,y_axe_leng,z_axe_leng),1.0/(double)particles);
+        //meandiff = min(meandiff, squaredDistanceForMSD(x[i],y[i],z[i],x0[i],y0[i],z0[i],x_axe_leng,y_axe_leng,z_axe_leng));
       }
-      meandiff /= (double)particles;
-      ofs<<meandiff<<endl;
+      //meandiff /= (double)particles;
+      msd<<meandiff<<endl;
+
+      c_loop_all cmh(don);
+      voronoicell_neighbor ch;
+      if(cmh.start()) do if(don.compute_cell(ch,cmh)) {
+	    hstdata[ch.number_of_faces()] += hsttics;
+	  }while (cmh.inc());
     }
     //start calculation msd;
     if (time == msdstarttime) {
@@ -285,8 +292,18 @@ int main(int argc, char **argv) {
       fprintf(gp, "set output\n");
       pclose(gp);
       
-    } 
+    }
+    //for (auto & h : hstdata) cout<<h<<" ";
+    //cout<<endl;
   }
-  ofs.close();
+  msd.close();
+
+  int hi = 0;
+  for (auto & h : hstdata) {
+    hst<<hi<<" "<<h<<endl;
+    ++hi;
+  }
+  hst<<endl;
+  hst.close();
   return 1;
  }
