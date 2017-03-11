@@ -77,23 +77,18 @@ int main(int argc, char **argv) {
   //spacetics
   //internal variables
  
-  double shear = 0.0;
-  for ( int si = 0; si != 71; ++si) {
-    shear = 0.01*(double)si;
+
+  for ( int si = 0; si != 50; ++si) {
     
     container con(x_min,x_max,y_min,y_max,z_min,z_max,n_x,n_y,n_z,
                   true,true,true,8);
     
-    for (int i = 0; i != 4; ++i) {
-      for(int j = 0; j != 4; ++j) {
-        for(int k = 0; k != 4; ++k) {
-          double x = x_min+(double)i+0.5;
-          double y = y_min+(double)j+0.5;
-          double z = z_min+(double)k+0.5;
-          if ( j%2 != 0 ) z += shear;
-          con.put(4*4*i+4*j+k,x,y,z);
-        }
-      }
+    for (int i = 0; i != particles; ++i) {
+      double x = x_min+rnd(mt)*(x_max-x_min);
+      double y = y_min+rnd(mt)*(y_max-y_min);
+      double z = z_min+rnd(mt)*(z_max-z_min);
+
+      con.put(i,x,y,z);
     }
     string pack = datdirectoryname+"packing"+to_string(si);
     con.print_custom("%i %v",pack.c_str());
