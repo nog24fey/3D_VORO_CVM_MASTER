@@ -149,6 +149,7 @@ int main(int argc, char **argv) {
     
     double tot_eng = retTotalEnergy(eon, tarea);
 
+    double ox, oy, oz, vx, vy, vz;
     for (int i = 0;i<particles;i++) {
 
       ox = x[i];

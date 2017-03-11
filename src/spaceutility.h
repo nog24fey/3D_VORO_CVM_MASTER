@@ -2,8 +2,9 @@
 #define SPACEUTILITY_H_ 1
 
 #include <cmath>
+#include <algorithm>
 
-using std::min;
+using namespace std;
 
 double squaredDistanceForMSD(double x, double y, double z, double x0, double y0, double z0, double x_axe_leng, double y_axe_leng, double z_axe_leng){
   //double r2 = (x-x0)*(x-x0)+(y-y0)*(y-y0)+(z-z0)*(z-z0);
