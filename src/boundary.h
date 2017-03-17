@@ -6,11 +6,13 @@ class Boundary {
   Boundary(double a) : xmin_(-a),ymin_(-a),zmin_(-a),
                        xmax_(a), ymax_(a),zmax_(a),
                        x_axe_leng_(2.0*a),y_axe_leng_(2.0*a),z_axe_leng_(2.0*a),
-                       cvol_(8.0*a*a*a) {} 
+                       cvol_(8.0*a*a*a),
+                       nx_((int)(2.0*a)), ny_((int)(2.0*a)), nz_((int)(2.0*a)) {} 
   virtual ~Boundary() {};
   double xmin_,ymin_,zmin_,xmax_,ymax_,zmax_;
   double x_axe_leng_, y_axe_leng_, z_axe_leng_;
-  double cvol_;                       
+  double cvol_;
+  int nx_, ny_, nz_;
 };
 
 class PosSet {

@@ -9,16 +9,21 @@
 #define Pi 3.14159265358979323846
 using std::mt19937;
 using std::uniform_real_distribution;
+using std::normal_distribution;
 
 using namespace voro;
 
+void scaleUnitVector(VoronoiPoint& vps) {
+  scaleUnitVector(vps.dirx_, vps.diry_, vps.dirz_);
+}
+
 void setInitialConfiguration(container& con, vector<VoronoiPoint>& vps, Boundary* bdr, mt19937& mt) {
-  uniform_real_distribution<double> randm(0.0,1.0);
+  normal_distribution<double> randm(0.0,1.0);
   
   int index = 0;
   for (auto & v: vps) {
-    v.theta_ = randm(mt)*Pi;
-    v.phi_ = randm(mt)*2.0*Pi;
+    v.dirx_ = randm(mt); v.diry_ = randm(mt); v.dirz_ = randm(mt);
+    scaleUnitVector(v);
 
     v.x_ = bdr->xmin_+randm(mt)*(bdr->xmax_-bdr->xmin_);
     v.y_ = bdr->ymin_+randm(mt)*(bdr->ymax_-bdr->ymin_);
@@ -43,7 +48,88 @@ double retTotalEnergy(container& con, double value_tarea) {
   return totalenergy;
 }
 
-void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, Boundary* bdr, mt19937& mt) {
+void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, Boundary* bdr, mt19937& mt, double value_tarea, double dps) {
+  //prepare constants for speed
+  double xmin = bdr->xmin_; double xmax = bdr->xmax_;
+  double ymin = bdr->ymin_; double ymax = bdr->ymax_;
+  double zmin = bdr->zmin_; double zmax = bdr->zmax_;
+  int nx = bdr->nx_; int ny = bdr->ny_; int nz = bdr->nz_;
+        
+  //uniform_real_distribution<double> randm(0.0,1.0);
+  normal_distribution<double> nml(0.0,1.0);
+  double D = 1;//あとでパラメータにする.
+
+  int index = 0;
+  //(random+selfpropel)motion
+  for (auto & v : vps) {
+    double rscale = sqrt(2*D/3);
+    double rx = nml(mt)*rscale; double ry = nml(mt)*rscale; double rz = nml(mt)*rscale;
+    v.dirx_ += ry*v.dirz_ - rz*v.diry_;
+    v.diry_ += rz*v.dirx_ - rx*v.dirz_;
+    v.dirz_ += rx*v.diry_ - ry*v.dirx_;
+    scaleUnitVector(v);
+    
+    v.x_ += v.r_*v.dirx_;
+    v.y_ += v.r_*v.diry_;
+    v.z_ += v.r_*v.dirz_;
+    
+    base_con.put(index,v.x_,v.y_,v.z_);
+    ++index;
+  }
+    
+  double totalenergy_base = retTotalEnergy(base_con, value_tarea);
+
+  double ox, oy, oz, vx, vy, vz;
+  int index_self = 0;
+  for (auto & v : vps) {
+    ox = v.x_;
+    oy = v.y_;
+    oz = v.z_;
+    vx = v.x_+dps;
+    vy = v.y_+dps;
+    vz = v.z_+dps;
+
+      container xon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
+      int index_x = 0;
+      for (auto & s : vps) {
+	if (v!=s) {
+	  xon.put(index_x,s.x_,s.y_,s.z_);
+	}
+        ++index_x;
+      }
+      xon.put(index_self,vx,oy,oz);
+      double tot_eng_x = retTotalEnergy(xon, value_tarea);
+      v.xn_ = -0.01*(tot_eng_x-totalenergy_base)/dps;// + v.r_*v.dirx_;;
+
+      
+      container yon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
+      int index_y = 0;
+      for (auto & s : vps) {
+	if (v!=s) {
+	  yon.put(index_y,s.x_,s.y_,s.z_);
+	}
+        ++index_y;
+      }      
+      yon.put(index_self,ox,vy,oz);
+      double tot_eng_y = retTotalEnergy(yon, value_tarea);
+      v.yn_ = -0.01*(tot_eng_y-totalenergy_base)/dps;// + v.r_*v.diry_;;
+
+      
+      container zon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
+      int index_z = 0;
+      for (auto & s : vps) {
+	if (v!=s) {
+	  zon.put(index_z,s.x_,s.y_,s.z_);
+	}
+        ++index_z;
+      }
+      zon.put(index_self,ox,oy,vz);
+      double tot_eng_z = retTotalEnergy(zon, value_tarea);
+      v.zn_ = -0.01*(tot_eng_z-totalenergy_base)/dps;// + v.r_*v.dirz_;;
+
+      ++index_self;
+  }
+
 }
 
 void renewPosition(container& con, vector<VoronoiPoint>& vps, Boundary* bdr) {

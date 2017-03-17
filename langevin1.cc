@@ -37,8 +37,7 @@ mt19937 mt;
 
 using namespace voro;
   
-// Set up the number of blocks that the container is divided into
-const int n_x=6,n_y=6,n_z=6;
+
 // Set the number of particles that are going to be randomly introduced
 const int particles=6*6*6;
  
@@ -85,7 +84,7 @@ int main(int argc, char **argv) {
   for( int i = 0; i != particles; ++i) vp.push_back(VoronoiPoint());
 
   
-  container con(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,n_x,n_y,n_z,
+  container con(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
 		true,true,true,8);
     
   // Randomly add particles into the container
@@ -93,85 +92,20 @@ int main(int argc, char **argv) {
 
   con.print_custom("%i %v","packing.custom3");
 
-  int endtime = 20;
+  int endtime = 2000;
   int msdstarttime = endtime/20;
   double hsttics = (double)(particles*(endtime-msdstarttime));
   hsttics = 1.0/hsttics;
   for (int time = 0; time != endtime; ++time) {
 
-    container eon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,n_x,n_y,n_z,
+    container eon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
 		  true,true,true,8);
 
-    //(random+selfpropel)motion
-    for (int i=0; i<particles; ++i) {
-      //determine direction for selfpropel
-      double dh = Pi*rnd(mt);
-      vp[i].theta_ = dh;
-      //while (theta[i]<0.0) theta[i] += Pi;
-      //while (theta[i]>=Pi) theta[i] -= Pi;
-      dh = 2.0*Pi*rnd(mt);
-      vp[i].phi_ = dh;
-      //if (phi[i]<0.0) phi[i] += 2.0*Pi;
-      //else if (phi[i]>=2.0*Pi) phi[i] -= 2.0*Pi;
-      //motion
-      vp[i].x_ += vp[i].r_*sin(vp[i].theta_)*cos(vp[i].phi_);
-      vp[i].y_ += vp[i].r_*sin(vp[i].theta_)*sin(vp[i].phi_);
-      vp[i].z_ += vp[i].r_*cos(vp[i].theta_);
-      
-      eon.put(i,vp[i].x_,vp[i].y_,vp[i].z_);
-    }
-    
-    double tot_eng = retTotalEnergy(eon, tarea);
 
-    double ox, oy, oz, vx, vy, vz;
-    for (int i = 0;i<particles;i++) {
-
-      ox = vp[i].x_;
-      oy = vp[i].y_;
-      oz = vp[i].z_;
-      vx = vp[i].x_+dpos;
-      vy = vp[i].y_+dpos;
-      vz = vp[i].z_+dpos;
-
-      container xon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,n_x,n_y,n_z,
-		    true,true,true,8);
-      for (int j = 0;j<particles;j++) {
-	if (i!=j) {
-	  xon.put(j,vp[j].x_,vp[j].y_,vp[j].z_);
-	}
-      }
-      xon.put(i,vx,oy,oz);
-      double tot_eng_x = retTotalEnergy(xon, tarea);
-      vp[i].xn_ = -0.01*(tot_eng_x-tot_eng)/dpos;
-
-      
-      container yon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,n_x,n_y,n_z,
-		    true,true,true,8);
-      for (int j = 0;j<particles;j++) {
-	if (i!=j) {
-	  yon.put(j,vp[j].x_,vp[j].y_,vp[j].z_);
-	}
-      }      
-      yon.put(i,ox,vy,oz);
-      double tot_eng_y = retTotalEnergy(yon, tarea);
-      vp[i].yn_ = -0.01*(tot_eng_y-tot_eng)/dpos;
-
-      
-      container zon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,n_x,n_y,n_z,
-		    true,true,true,8);
-      for (int j = 0;j<particles;j++) {
-	if (i!=j) {
-	  zon.put(j,vp[j].x_,vp[j].y_,vp[j].z_);
-	}
-      }
-      zon.put(i,ox,oy,vz);
-      double tot_eng_z = retTotalEnergy(zon, tarea);
-      vp[i].zn_ = -0.01*(tot_eng_z-tot_eng)/dpos;
-
-    }
+    execLangevinStep(eon, vp, bd, mt, tarea, dpos);
 
     //renew position
-    container don(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,n_x,n_y,n_z,
+    container don(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
 		  true,true,true,8);
     renewPosition(don, vp, bd);
 
@@ -181,6 +115,7 @@ int main(int argc, char **argv) {
       double meandiff = 1.0;
       for ( int i=0; i<particles; ++i) {
 	meandiff *= pow(squaredDistanceForMSD(vp[i].x_,vp[i].y_,vp[i].z_,vp[i].x0_,vp[i].y0_,vp[i].z0_,bd->x_axe_leng_,bd->y_axe_leng_,bd->z_axe_leng_),1.0/(double)particles);
+        //meandiff += squaredDistanceForMSD(vp[i].x_,vp[i].y_,vp[i].z_,vp[i].x0_,vp[i].y0_,vp[i].z0_,bd->x_axe_leng_,bd->y_axe_leng_,bd->z_axe_leng_);
         //meandiff = min(meandiff, squaredDistanceForMSD(vp[i].x_,vp[i].y_,vp[i].z_,x0[i],y0[i],z0[i],bd->x_axe_leng_,bd->y_axe_leng_,bd->z_axe_leng_));
       }
       //meandiff /= (double)particles;

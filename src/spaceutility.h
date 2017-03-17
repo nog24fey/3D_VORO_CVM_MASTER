@@ -19,4 +19,9 @@ double squaredDistanceForMSD(double x, double y, double z, double x0, double y0,
   return fx*fx+fy*fy+fz*fz;
 }
 
+void scaleUnitVector(double& xx, double& yy, double& zz) {
+  double scale = sqrt( xx*xx + yy*yy + zz*zz );
+  xx /= scale; yy /= scale; zz /= scale;
+}
+
 #endif
