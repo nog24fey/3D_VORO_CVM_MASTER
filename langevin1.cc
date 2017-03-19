@@ -4,13 +4,11 @@ argv[2] directory name packing image files !!must be ended with "/" !!
 argv[3] target value of area; timed 0.01 
 argv[4] sample id; also used for random seed
 argv[5] (int)time step
+argv[6] diffusion constant
+argv[7] velocity
+argv[8] endtime
 */
 
-// Voronoi calculation example code
-//
-// Author   : Chris H. Rycroft (LBL / UC Berkeley)
-// Email    : chr@alum.mit.edu
-// Date     : August 30th 2011
 #include "./src/directorymake.h"
 #include "./src/spaceutility.h"
 #include "./src/voro_func.h"
@@ -44,11 +42,16 @@ const int particles=6*6*6;
 
 int main(int argc, char **argv) {
   //system parameters
-  const int i_tarea = atoi(argv[3]);
-  const int i_smpl = atoi(argv[4]);
-  const double tarea = 0.01*(double)i_tarea;
-  const int timestep = atoi(argv[5]);
-  const double timetics = 1.0/(double)timestep;
+  const int kint_tarea = atoi(argv[3]);
+  const int kint_smpl = atoi(argv[4]);
+  const double ktarea = 0.01*(double)kint_tarea;
+  const int ktimestep = atoi(argv[5]);
+  const double ktimetics = 1.0/(double)ktimestep;
+  const int kint_diffconst = atoi(argv[6]);
+  const double kdiffconst = 1.0*(double)(kint_diffconst);
+  const int kint_unitvel = atoi(argv[7]);
+  const double kunitvel = 0.01*(double)kint_unitvel;
+  const int kendtime = atoi(argv[8]);
 
   //data packing directories
   directoryMake(argv[1]);
@@ -57,33 +60,40 @@ int main(int argc, char **argv) {
   string imagedirectoryname = argv[2];
 
   //filename settings
-  const string str_tarea = "ar"+to_string(i_tarea);
-  const string str_smpl = "sm"+to_string(i_smpl);
-  const string str_param = str_tarea+str_smpl;
+  const string kstr_tarea = "ar"+to_string(kint_tarea);
+  const string kstr_smpl = "sm"+to_string(kint_smpl);
+  const string kstr_diff = "df"+to_string(kint_diffconst);
+  const string kstr_vel = "vl"+to_string(kint_unitvel);
+  const string kstr_endtime = "et"+to_string(kendtime);
+  const string kstr_timestep = "ts"+to_string(ktimestep);
+  const string kstr_param = kstr_tarea+kstr_smpl+kstr_diff+kstr_vel+kstr_endtime+kstr_timestep;
 
   //open msd dat file
-  string str_msd = datdirectoryname+"MSD"+str_param+".dat";
+  const string kstr_msd = datdirectoryname+"MSD"+kstr_param+".dat";
   ofstream msd;
-  msd.open(str_msd);
+  msd.open(kstr_msd);
 
   //open histgram dat file
-  string str_hst = datdirectoryname+"HST"+str_param+".dat";
+  const string kstr_hst = datdirectoryname+"HST"+kstr_param+".dat";
   ofstream hst;
-  hst.open(str_hst);
+  hst.open(kstr_hst);
   vector<double> hstdata(40,0.0);
   
   //initialize random function
-  mt.seed(i_smpl);
+  mt.seed(kint_smpl);
   uniform_real_distribution<double> rnd(0.0,1.0);
 
   //spacetics
-  double dpos = 0.01;
+  const double kdpos = 0.01;
 
   //boundary
   Boundary* bd = new Boundary(3.0);
   //internal variables
   vector<VoronoiPoint> vp;
-  for( int i = 0; i != particles; ++i) vp.push_back(VoronoiPoint());
+  for( int i = 0; i != particles; ++i) {
+    vp.push_back(VoronoiPoint());
+    vp[i].r_ = kunitvel;
+  }
 
   
   container con(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
@@ -94,24 +104,24 @@ int main(int argc, char **argv) {
 
   con.print_custom("%i %v","packing.custom3");
 
-  int endtime = 2000;
-  int msdstarttime = endtime/20;
-  double hsttics = (double)(particles*(endtime-msdstarttime));
-  hsttics = 1.0/hsttics;
-  for (int time = 0; time != endtime; ++time) {
+  const int kmsdstarttime = kendtime/20;
+  const double khsttics = 1.0/( (double)(particles*(kendtime-kmsdstarttime)) ); 
 
-     for( int ts = 0; ts != timestep; ++ ts) {
+  for (int time = 0; time != kendtime; ++time) {
+
+     for( int ts = 0; ts != ktimestep; ++ts) {
+        cout<<time<<" "<<ts<<endl;
         container eon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
 		  true,true,true,8);
-        execLangevinStep(eon, vp, bd, mt, tarea, dpos, timetics);
+        execLangevinStep(eon, vp, bd, mt, ktarea, kdpos, ktimetics, kdiffconst);
      }
 
      container don(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
                    true,true,true,8);
      setContainer(don, vp);
 
-     if (time > msdstarttime) {
-        msd<<time-msdstarttime<<" ";
+     if (time > kmsdstarttime) {
+        msd<<time-kmsdstarttime<<" ";
         double meandiff = 1.0;
         for ( int i=0; i<particles; ++i) {
            meandiff *= pow(squaredDistanceForMSD(vp[i].x_,vp[i].y_,vp[i].z_,vp[i].x0_,vp[i].y0_,vp[i].z0_,bd->x_axe_leng_,bd->y_axe_leng_,bd->z_axe_leng_),1.0/(double)particles);
@@ -125,11 +135,11 @@ int main(int argc, char **argv) {
      c_loop_all cmh(don);
      voronoicell_neighbor ch;
      if(cmh.start()) do if(don.compute_cell(ch,cmh)) {
-              hstdata[ch.number_of_faces()] += hsttics;
+              hstdata[ch.number_of_faces()] += khsttics;
            }while (cmh.inc());
  
      //start calculation msd;
-     if (time == msdstarttime) {
+     if (time == kmsdstarttime) {
         for (int i = 0; i < particles; ++i) {
            vp[i].x0_ = vp[i].x_;
            vp[i].y0_ = vp[i].y_;
@@ -139,19 +149,19 @@ int main(int argc, char **argv) {
     
      if (time%5 == 0) {
         string stime(to_string(time/5));
-        string str_p = datdirectoryname+stime+str_param+"point.dat";
-        string str_v = datdirectoryname+stime+str_param+"edges.dat";
-        don.draw_particles(str_p.c_str());
-        don.draw_cells_gnuplot(str_v.c_str());
+        string kstr_p = datdirectoryname+stime+kstr_param+"point.dat";
+        string kstr_v = datdirectoryname+stime+kstr_param+"edges.dat";
+        don.draw_particles(kstr_p.c_str());
+        don.draw_cells_gnuplot(kstr_v.c_str());
 
-        string str_pvj = imagedirectoryname+stime+str_param+"pointedges.png";
+        string kstr_pvj = imagedirectoryname+stime+kstr_param+"pointedges.png";
       
         FILE* gp;
         gp = popen("gnuplot -persist","w");
         fprintf(gp, "set term png size 1200, 1200\n");
 
-        fprintf(gp, "set output \"%s\" \n", str_pvj.c_str());
-        fprintf(gp, "sp Type& operator[](int index);%f:%f][%f:%f][%f:%f]\"%s\" u 2:3:4 w p ps 2 pt 7 lc rgbcolor \"dark-green\" ti \"vpos\", \"%s\" u 1:2:3 w l lw 0.2 lc rgbcolor \"gray50\" ti \"edge\" \n", bd->xmin_, bd->xmax_, bd->ymin_, bd->ymax_, bd->zmin_, bd->zmax_, str_p.c_str(), str_v.c_str());
+        fprintf(gp, "set output \"%s\" \n", kstr_pvj.c_str());
+        fprintf(gp, "sp[%f:%f][%f:%f][%f:%f]\"%s\" u 2:3:4 w p ps 2 pt 7 lc rgbcolor \"dark-green\" ti \"vpos\", \"%s\" u 1:2:3 w l lw 0.2 lc rgbcolor \"gray50\" ti \"edge\" \n", bd->xmin_, bd->xmax_, bd->ymin_, bd->ymax_, bd->zmin_, bd->zmax_, kstr_p.c_str(), kstr_v.c_str());
         fprintf(gp, "set output\n");
         pclose(gp);
       

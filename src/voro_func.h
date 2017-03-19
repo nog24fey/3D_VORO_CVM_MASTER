@@ -13,7 +13,7 @@ using std::normal_distribution;
 
 using namespace voro;
 
-void setPeriodicity(double &x, double &y, double &z, Boundary* bdr) {
+void setPeriodicity(double &x, double &y, double &z, const Boundary* bdr) {
   while (x < bdr->xmin_) x += bdr->x_axe_leng_;
   while (x >= bdr->xmax_) x -= bdr->x_axe_leng_;
   while (y < bdr->ymin_) y += bdr->y_axe_leng_;
@@ -33,7 +33,7 @@ void setContainer(container& con, vector<VoronoiPoint>& vps) {
       ++index;
    }
 }
-void setInitialConfiguration(container& con, vector<VoronoiPoint>& vps, Boundary* bdr, mt19937& mt) {
+void setInitialConfiguration(container& con, vector<VoronoiPoint>& vps, const Boundary* bdr, mt19937& mt) {
   normal_distribution<double> randm(0.0,1.0);
   
   int index = 0;
@@ -49,7 +49,7 @@ void setInitialConfiguration(container& con, vector<VoronoiPoint>& vps, Boundary
   }
 }
 
-double retTotalEnergy(container& con, double value_tarea) {
+double retTotalEnergy(container& con, const double value_tarea) {
 
   double totalenergy = 0.0;
 
@@ -64,14 +64,14 @@ double retTotalEnergy(container& con, double value_tarea) {
   return totalenergy;
 }
 
-void renewPositions(vector<VoronoiPoint>& vps) {
+void renewPositions(vector<VoronoiPoint>& vps, const Boundary* bdr) {
   //renewPosition
   double cx = 0.0; double cy = 0.0; double cz = 0.0;
 
   for (auto & v : vps) {
     v.xo_ = v.x_; v.yo_ = v.y_; v.zo_ = v.z_;
     double px = 0.5*(v.xn1_+v.xn2_);
-    doublw py = 0.5*(v.yn1_+v.yn2_);
+    double py = 0.5*(v.yn1_+v.yn2_);
     double pz = 0.5*(v.zn1_+v.zn2_);
     v.x_ += px; v.y_ += py; v.z_ += pz; 
     cx += px; cy += py; cz += pz;
@@ -86,18 +86,19 @@ void renewPositions(vector<VoronoiPoint>& vps) {
   }
 }
 
-void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, Boundary* bdr, mt19937& mt, double value_tarea, double dps, double delta_t) {
+void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boundary* bdr, mt19937& mt, const double value_tarea, const double dps, const double delta_t, const double diffusion_constant) {
   //prepare constants for speed
   double xmin = bdr->xmin_; double xmax = bdr->xmax_;
   double ymin = bdr->ymin_; double ymax = bdr->ymax_;
   double zmin = bdr->zmin_; double zmax = bdr->zmax_;
   int nx = bdr->nx_; int ny = bdr->ny_; int nz = bdr->nz_;
 
+  double D = diffusion_constant;
   double rscale = sqrt(2.0*D*delta_t/3.0);
   
   //uniform_real_distribution<double> randm(0.0,1.0);
   normal_distribution<double> nml(0.0,1.0);
-  double D = 1;//あとでパラメータにする.
+
 
   int index = 0;
   //(random+selfpropel)motion
@@ -188,7 +189,7 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, Boundary* 
     }
   }
 
-  renewPositions(vps);
+  renewPositions(vps, bdr);
 
 }
   
