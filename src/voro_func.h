@@ -64,15 +64,16 @@ double retTotalEnergy(container& con, const double value_tarea) {
   return totalenergy;
 }
 
-void renewPositions(vector<VoronoiPoint>& vps, const Boundary* bdr) {
+void renewPositions(vector<VoronoiPoint>& vps, const Boundary* bdr, const double delta_t) {
   //renewPosition
   double cx = 0.0; double cy = 0.0; double cz = 0.0;
-
+  const double dt = delta_t;
+  
   for (auto & v : vps) {
     v.xo_ = v.x_; v.yo_ = v.y_; v.zo_ = v.z_;
-    double px = 0.5*(v.xn1_+v.xn2_);
-    double py = 0.5*(v.yn1_+v.yn2_);
-    double pz = 0.5*(v.zn1_+v.zn2_);
+    double px = 0.5*dt*(v.xn1_+v.xn2_);
+    double py = 0.5*dt*(v.yn1_+v.yn2_);
+    double pz = 0.5*dt*(v.zn1_+v.zn2_);
     v.x_ += px; v.y_ += py; v.z_ += pz; 
     cx += px; cy += py; cz += pz;
   }
@@ -189,7 +190,7 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
     }
   }
 
-  renewPositions(vps, bdr);
+  renewPositions(vps, bdr, delta_t);
 
 }
   
