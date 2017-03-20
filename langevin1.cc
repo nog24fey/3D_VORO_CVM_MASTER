@@ -1,12 +1,12 @@
 /*
 argv[1] directory name packing data files !!must be ended with "/" !!
 argv[2] directory name packing image files !!must be ended with "/" !!
-argv[3] target value of area; timed 0.01 
-argv[4] sample id; also used for random seed
-argv[5] (int)time step
-argv[6] diffusion constant
-argv[7] velocity
-argv[8] endtime
+argv[3] target value of area; timed 0.01           eg. 300-1000
+argv[4] sample id; also used for random seed       eg. 0-10
+argv[5] (int)time step                             eg. 4,8,10
+argv[6] diffusion constant                         eg. 1
+argv[7] velocity                                   eg. 1-10
+argv[8] endtime                                    eg. 200(debug),10000(real)
 */
 
 #include "./src/directorymake.h"

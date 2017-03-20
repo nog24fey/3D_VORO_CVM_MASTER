@@ -88,13 +88,13 @@ void renewPositions(vector<VoronoiPoint>& vps, const Boundary* bdr) {
 
 void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boundary* bdr, mt19937& mt, const double value_tarea, const double dps, const double delta_t, const double diffusion_constant) {
   //prepare constants for speed
-  double xmin = bdr->xmin_; double xmax = bdr->xmax_;
-  double ymin = bdr->ymin_; double ymax = bdr->ymax_;
-  double zmin = bdr->zmin_; double zmax = bdr->zmax_;
-  int nx = bdr->nx_; int ny = bdr->ny_; int nz = bdr->nz_;
+  const double xmin = bdr->xmin_; const double xmax = bdr->xmax_;
+  const double ymin = bdr->ymin_; const double ymax = bdr->ymax_;
+  const double zmin = bdr->zmin_; const double zmax = bdr->zmax_;
+  const int nx = bdr->nx_; const int ny = bdr->ny_; const int nz = bdr->nz_;
 
-  double D = diffusion_constant;
-  double rscale = sqrt(2.0*D*delta_t/3.0);
+  const double D = diffusion_constant;
+  const double rscale = sqrt(2.0*D*delta_t/3.0);
   
   //uniform_real_distribution<double> randm(0.0,1.0);
   normal_distribution<double> nml(0.0,1.0);
@@ -114,7 +114,7 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
     ++index;
   }
     
-  double totalenergy_base = retTotalEnergy(base_con, value_tarea);
+  const double totalenergy_base = retTotalEnergy(base_con, value_tarea);
 
   double ox, oy, oz, vx, vy, vz;
   for (int rktime = 0; rktime !=2; ++rktime) { //calc F1 in rktime == 0 and F2 in rktime == 1;
@@ -146,7 +146,7 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
         ++index_x;
       }
       xon.put(index_self,vx,oy,oz);
-      double tot_eng_x = retTotalEnergy(xon, value_tarea);
+      const double tot_eng_x = retTotalEnergy(xon, value_tarea);
       if (rktime == 0) {
         v.xn1_ = -0.01*(tot_eng_x-totalenergy_base)/dps + kspl_x;
       } else {
@@ -162,7 +162,7 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
         ++index_y;
       }      
       yon.put(index_self,ox,vy,oz);
-      double tot_eng_y = retTotalEnergy(yon, value_tarea);
+      const double tot_eng_y = retTotalEnergy(yon, value_tarea);
       if (rktime == 0) {
         v.yn1_ = -0.01*(tot_eng_y-totalenergy_base)/dps + kspl_y;
       } else {
@@ -178,7 +178,7 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
         ++index_z;
       }
       zon.put(index_self,ox,oy,vz);
-      double tot_eng_z = retTotalEnergy(zon, value_tarea);
+      const double tot_eng_z = retTotalEnergy(zon, value_tarea);
       if (rktime == 0) {
         v.zn1_ = -0.01*(tot_eng_z-totalenergy_base)/dps + kspl_z;
       } else {
