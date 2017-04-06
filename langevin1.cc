@@ -15,7 +15,6 @@ argv[8] endtime                                    eg. 200(debug),10000(real)
 
 #include <vector>
 #include <iostream>
-#include <fstream>
 #include <string>
 #include <cmath>
 
@@ -120,38 +119,19 @@ int main(int argc, char **argv) {
                    true,true,true,8);
      setContainer(don, vp);
 
-     if (time > kmsdstarttime) {
-        msd<<time-kmsdstarttime<<" ";
-        double meandiff = 1.0;
-        for ( int i=0; i<particles; ++i) {
-           meandiff *= pow(squaredDistanceForMSD(vp[i].x_,vp[i].y_,vp[i].z_,vp[i].x0_,vp[i].y0_,vp[i].z0_,bd->x_axe_leng_,bd->y_axe_leng_,bd->z_axe_leng_),1.0/(double)particles);
-           //meandiff += squaredDistanceForMSD(vp[i].x_,vp[i].y_,vp[i].z_,vp[i].x0_,vp[i].y0_,vp[i].z0_,bd->x_axe_leng_,bd->y_axe_leng_,bd->z_axe_leng_);
-           //meandiff = min(meandiff, squaredDistanceForMSD(vp[i].x_,vp[i].y_,vp[i].z_,x0[i],y0[i],z0[i],bd->x_axe_leng_,bd->y_axe_leng_,bd->z_axe_leng_));
-        }
-           //meandiff /= (double)particles;
-        msd<<meandiff<<endl;
-     }
-     
-     c_loop_all cmh(don);
-     voronoicell_neighbor ch;
-     if(cmh.start()) do if(don.compute_cell(ch,cmh)) {
-              hstdata[ch.number_of_faces()] += khsttics;
-           }while (cmh.inc());
- 
-     //start calculation msd;
-     if (time == kmsdstarttime) {
-        for (int i = 0; i < particles; ++i) {
-           vp[i].x0_ = vp[i].x_;
-           vp[i].y0_ = vp[i].y_;
-           vp[i].z0_ = vp[i].z_;
-        }
-     }
-    
+     restoreHSTData(don,hstdata,khsttics);
+
+     writeMSDData(time,kmsdstarttime,vp,bd,msd);
+
      if (time%5 == 0) {
         string stime(to_string(time/5));
         string kstr_p = datdirectoryname+stime+kstr_param+"point.dat";
         string kstr_v = datdirectoryname+stime+kstr_param+"edges.dat";
-        don.draw_particles(kstr_p.c_str());
+        ofstream pf;
+        pf.open(kstr_p.c_str());
+        for (const auto& v : vp) pf<<v.x_<<" "<<v.y_<<" "<<v.z_<<" "<<v.dirx_<<" "<<v.diry_<<" "<<v.dirz_<<endl;
+        pf.close();
+        //don.draw_particles(kstr_p.c_str());
         don.draw_cells_gnuplot(kstr_v.c_str());
 
         string kstr_pvj = imagedirectoryname+stime+kstr_param+"pointedges.png";
@@ -161,7 +141,7 @@ int main(int argc, char **argv) {
         fprintf(gp, "set term png size 1200, 1200\n");
 
         fprintf(gp, "set output \"%s\" \n", kstr_pvj.c_str());
-        fprintf(gp, "sp[%f:%f][%f:%f][%f:%f]\"%s\" u 2:3:4 w p ps 2 pt 7 lc rgbcolor \"dark-green\" ti \"vpos\", \"%s\" u 1:2:3 w l lw 0.2 lc rgbcolor \"gray50\" ti \"edge\" \n", bd->xmin_, bd->xmax_, bd->ymin_, bd->ymax_, bd->zmin_, bd->zmax_, kstr_p.c_str(), kstr_v.c_str());
+        fprintf(gp, "sp[%f:%f][%f:%f][%f:%f]\"%s\" u 1:2:3:(0.3*$4):(0.3*$5):(0.3*$6) w vector notitle, \"%s\" u 1:2:3 w l lw 0.2 lc rgbcolor \"gray50\" notitle \n", bd->xmin_, bd->xmax_, bd->ymin_, bd->ymax_, bd->zmin_, bd->zmax_, kstr_p.c_str(), kstr_v.c_str());
         fprintf(gp, "set output\n");
         pclose(gp);
       
@@ -178,5 +158,5 @@ int main(int argc, char **argv) {
   hst.close();
 
   delete bd;
-  return 1;
+  return EXIT_SUCCESS;
  }

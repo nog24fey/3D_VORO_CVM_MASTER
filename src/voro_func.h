@@ -7,6 +7,8 @@
 
 #include <omp.h>
 #include <random>
+#include <fstream>
+
 #define Pi 3.14159265358979323846
 using std::mt19937;
 using std::uniform_real_distribution;
@@ -35,16 +37,17 @@ void setContainer(container& con, vector<VoronoiPoint>& vps) {
    }
 }
 void setInitialConfiguration(container& con, vector<VoronoiPoint>& vps, const Boundary* bdr, mt19937& mt) {
-  normal_distribution<double> randm(0.0,1.0);
+
+  uniform_real_distribution<double> randm(-1.0,1.0);
   
   int index = 0;
   for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) {
     (*v).dirx_ = randm(mt); (*v).diry_ = randm(mt); (*v).dirz_ = randm(mt);
     scaleUnitVector((*v));
 
-    (*v).x_ = bdr->xmin_+randm(mt)*(bdr->xmax_-bdr->xmin_);
-    (*v).y_ = bdr->ymin_+randm(mt)*(bdr->ymax_-bdr->ymin_);
-    (*v).z_ = bdr->zmin_+randm(mt)*(bdr->zmax_-bdr->zmin_);
+    (*v).x_ = 0.5*randm(mt)*(bdr->xmax_-bdr->xmin_);
+    (*v).y_ = 0.5*randm(mt)*(bdr->ymax_-bdr->ymin_);
+    (*v).z_ = 0.5*randm(mt)*(bdr->zmax_-bdr->zmin_);
     con.put(index,(*v).x_,(*v).y_,(*v).z_);
     ++index;
   }
@@ -72,7 +75,8 @@ void renewPositions(vector<VoronoiPoint>& vps, const Boundary* bdr, const double
 
   double vsize = (double)(vps.size());
   
-  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) {
+  //#pragma omp parallel for schedule(static, 4)
+  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v < vps.end(); ++v) {
     (*v).xo_ = (*v).x_; (*v).yo_ = (*v).y_; (*v).zo_ = (*v).z_;
     double px = 0.5*dt*((*v).xn1_+(*v).xn2_);
     double py = 0.5*dt*((*v).yn1_+(*v).yn2_);
@@ -83,10 +87,12 @@ void renewPositions(vector<VoronoiPoint>& vps, const Boundary* bdr, const double
  
   cx /= vsize; cy /= vsize; cz /= vsize;
 
-  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) {
+  //#pragma omp parallel for schedule(static, 4)
+  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v < vps.end(); ++v) {
     (*v).x_ -= cx; (*v).y_ -= cy; (*v).z_ -=cz;
     setPeriodicity((*v).x_,(*v).y_,(*v).z_,bdr);
   }
+
 }
 
 void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boundary* bdr, mt19937& mt, const double value_tarea, const double dps, const double delta_t, const double diffusion_constant) {
@@ -97,6 +103,7 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
   const int nx = bdr->nx_; const int ny = bdr->ny_; const int nz = bdr->nz_;
 
   const double D = diffusion_constant;
+  const double alpha = 0.05;
   const double rscale = sqrt(2.0*D*delta_t/3.0);
   
   //uniform_real_distribution<double> randm(0.0,1.0);
@@ -105,7 +112,8 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
 
   int index = 0;
   //(random+selfpropel)motion
-  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) {
+#pragma omp parallel for schedule(static, 4)
+  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v < vps.end(); ++v) {
 
     (*v).nsx_ = nml(mt)*rscale; (*v).nsy_ = nml(mt)*rscale; (*v).nsz_ = nml(mt)*rscale;
     (*v).dirx_ += (*v).nsy_*(*v).dirz_ - (*v).nsz_*(*v).diry_;
@@ -124,11 +132,7 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
 
     int index_self = 0;
 
-    //rewrite range-base to iterator for openmp
-    //for (auto & v : vps) {
-
-#pragma omp parallel
-#pragma omp for schedule(static, 8)
+#pragma omp parallel for schedule(static, 8)
     for ( std::vector<VoronoiPoint>::iterator v = vps.begin(); v < vps.end(); ++v) { 
 
       double ox, oy, oz, vx, vy, vz;
@@ -158,9 +162,9 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
       xon.put(index_self,vx,oy,oz);
       const double tot_eng_x = retTotalEnergy(xon, value_tarea);
       if (rktime == 0) {
-        (*v).xn1_ = -0.01*(tot_eng_x-totalenergy_base)/dps + kspl_x;
+        (*v).xn1_ = -alpha*(tot_eng_x-totalenergy_base)/dps + kspl_x;
       } else {
-        (*v).xn2_ = -0.01*(tot_eng_x-totalenergy_base)/dps + kspl_x;
+        (*v).xn2_ = -alpha*(tot_eng_x-totalenergy_base)/dps + kspl_x;
       }
       
       container yon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
@@ -174,9 +178,9 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
       yon.put(index_self,ox,vy,oz);
       const double tot_eng_y = retTotalEnergy(yon, value_tarea);
       if (rktime==0) {
-        (*v).yn1_ = -0.01*(tot_eng_y-totalenergy_base)/dps + kspl_y;
+        (*v).yn1_ = -alpha*(tot_eng_y-totalenergy_base)/dps + kspl_y;
       } else {
-        (*v).yn2_ = -0.01*(tot_eng_y-totalenergy_base)/dps + kspl_y;
+        (*v).yn2_ = -alpha*(tot_eng_y-totalenergy_base)/dps + kspl_y;
       }
       
       container zon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
@@ -190,9 +194,9 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
       zon.put(index_self,ox,oy,vz);
       const double tot_eng_z = retTotalEnergy(zon, value_tarea);
       if (rktime == 0) {
-        (*v).zn1_ = -0.01*(tot_eng_z-totalenergy_base)/dps + kspl_z;
+        (*v).zn1_ = -alpha*(tot_eng_z-totalenergy_base)/dps + kspl_z;
       } else {
-        (*v).zn1_ = -0.01*(tot_eng_z-totalenergy_base)/dps + kspl_z;
+        (*v).zn1_ = -alpha*(tot_eng_z-totalenergy_base)/dps + kspl_z;
       }
       
       ++index_self;
@@ -202,5 +206,40 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
   renewPositions(vps, bdr, delta_t);
 
 }
+
+void restoreHSTData(container& con, vector<double>& hst_data, const double khst_tics) {
+  c_loop_all cmh(con);
+  voronoicell_neighbor ch;
+  if (cmh.start()) do if (con.compute_cell(ch,cmh)) {
+        hst_data[ch.number_of_faces()] += khst_tics;
+      } while (cmh.inc());
+}
+
+void writeMSDData(const int time, const int starttime, vector<VoronoiPoint>& vps, const Boundary* bdr, ofstream& ofsMSD) {
+  if (time > starttime) {
+
+    ofsMSD<<time-starttime<<" ";
+    double meandiff = 1.0;
+    //double meandiff = 0.0;
+    double size = (double)(vps.size());
+    for (const auto& v : vps) {
+      meandiff *=pow(squaredDistanceForMSD(v.x_,v.y_,v.z_,v.x0_,v.y0_,v.z0_,bdr->x_axe_leng_,bdr->y_axe_leng_,bdr->z_axe_leng_),1.0/size);
+      //meandif += squaredDistanceForMSD(v.x_,v.y_,v.x0_,v.y0_,bdr->x_axe_leng_,bdr->y_axe_leng_);
+    }
+    //meandiff /= size;
+    ofsMSD<<meandiff<<endl;
+    
+  } else if (time == starttime) {
+    
+    for (auto& v : vps) {
+      v.x0_ = v.x_; v.y0_ = v.y_;; v.z0_ = v.z_;
+    }
+    
+  } else {
+    return;
+  }
+  
+}
+
   
 #endif
