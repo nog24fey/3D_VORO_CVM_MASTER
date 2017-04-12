@@ -47,9 +47,9 @@ int main(int argc, char **argv) {
   const int ktimestep = atoi(argv[5]);
   const double ktimetics = 1.0/(double)ktimestep;
   const int kint_diffconst = atoi(argv[6]);
-  const double kdiffconst = 1.0*(double)(kint_diffconst);
+  const double kdiffconst = 0.1*(double)(kint_diffconst);
   const int kint_unitvel = atoi(argv[7]);
-  const double kunitvel = 0.01*(double)kint_unitvel;
+  const double kunitvel = 0.001*(double)kint_unitvel;
   const int kendtime = atoi(argv[8]);
 
   //data packing directories

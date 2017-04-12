@@ -1,0 +1,2 @@
+#!/bin/bash
+icc -fast -Wall -std=c++11

@@ -69,27 +69,25 @@ double retTotalEnergy(container& con, const double value_tarea) {
 }
 
 void renewPositions(vector<VoronoiPoint>& vps, const Boundary* bdr, const double delta_t) {
-  //renewPosition
+
   double cx = 0.0; double cy = 0.0; double cz = 0.0;
   const double dt = delta_t;
 
-  double vsize = (double)(vps.size());
-  
-  //#pragma omp parallel for schedule(static, 4)
-  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v < vps.end(); ++v) {
+  const double kdvsize = (double)(vps.size());
+
+  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) {
     (*v).xo_ = (*v).x_; (*v).yo_ = (*v).y_; (*v).zo_ = (*v).z_;
-    double px = 0.5*dt*((*v).xn1_+(*v).xn2_);
-    double py = 0.5*dt*((*v).yn1_+(*v).yn2_);
-    double pz = 0.5*dt*((*v).zn1_+(*v).zn2_);
+    const double px = 0.5*dt*((*v).xn1_+(*v).xn2_);
+    const double py = 0.5*dt*((*v).yn1_+(*v).yn2_);
+    const double pz = 0.5*dt*((*v).zn1_+(*v).zn2_);
     (*v).x_ += px; (*v).y_ += py; (*v).z_ += pz; 
     cx += px; cy += py; cz += pz;
   }
  
-  cx /= vsize; cy /= vsize; cz /= vsize;
+  cx /= kdvsize; cy /= kdvsize; cz /= kdvsize;
 
-  //#pragma omp parallel for schedule(static, 4)
-  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v < vps.end(); ++v) {
-    (*v).x_ -= cx; (*v).y_ -= cy; (*v).z_ -=cz;
+  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) {
+    (*v).x_ -= cx; (*v).y_ -= cy; (*v).z_ -= cz;
     setPeriodicity((*v).x_,(*v).y_,(*v).z_,bdr);
   }
 
@@ -103,18 +101,14 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
   const int nx = bdr->nx_; const int ny = bdr->ny_; const int nz = bdr->nz_;
 
   const double D = diffusion_constant;
-  const double alpha = 0.05;
+  const double alpha = 0.01;
   const double rscale = sqrt(2.0*D*delta_t/3.0);
   
-  //uniform_real_distribution<double> randm(0.0,1.0);
   normal_distribution<double> nml(0.0,1.0);
 
-
   int index = 0;
-  //(random+selfpropel)motion
-#pragma omp parallel for schedule(static, 4)
-  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v < vps.end(); ++v) {
 
+  for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) {
     (*v).nsx_ = nml(mt)*rscale; (*v).nsy_ = nml(mt)*rscale; (*v).nsz_ = nml(mt)*rscale;
     (*v).dirx_ += (*v).nsy_*(*v).dirz_ - (*v).nsz_*(*v).diry_;
     (*v).diry_ += (*v).nsz_*(*v).dirx_ - (*v).nsx_*(*v).dirz_;
@@ -127,76 +121,72 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
     
   const double totalenergy_base = retTotalEnergy(base_con, value_tarea);
 
-  
   for (int rktime = 0; rktime !=2; ++rktime) { //calc F1 in rktime == 0 and F2 in rktime == 1;
 
     int index_self = 0;
 
-#pragma omp parallel for schedule(static, 8)
-    for ( std::vector<VoronoiPoint>::iterator v = vps.begin(); v < vps.end(); ++v) { 
+    for (std::vector<VoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) { 
 
-      double ox, oy, oz, vx, vy, vz;
-      
       if (rktime == 0) {
-        ox = (*v).x_; oy = (*v).y_; oz = (*v).z_;
+        (*v).tpox_ = (*v).x_; (*v).tpoy_ = (*v).y_; (*v).tpoz_ = (*v).z_;
       }else {
-        ox = (*v).x_+delta_t*((*v).xn1_); oy = (*v).y_+delta_t*((*v).yn1_); oz = (*v).z_+delta_t*((*v).zn1_);
-        setPeriodicity(ox, oy, oz, bdr);
-        
+        (*v).tpox_ = (*v).x_+delta_t*((*v).xn1_); (*v).tpoy_ = (*v).y_+delta_t*((*v).yn1_); (*v).tpoz_ = (*v).z_+delta_t*((*v).zn1_);
+        setPeriodicity((*v).tpox_, (*v).tpoy_, (*v).tpoz_, bdr);   
       }
-      vx = ox+dps; vy = oy+dps; vz = oz+dps;
-      setPeriodicity(vx, vy, vz, bdr);
+      (*v).tpnx_ = (*v).tpox_+dps; (*v).tpny_ = (*v).tpoy_+dps; (*v).tpnz_ = (*v).tpoz_+dps;
+      setPeriodicity((*v).tpnx_, (*v).tpny_, (*v).tpnz_, bdr);
 
       const double kspl_x = (*v).r_*(*v).dirx_;
       const double kspl_y = (*v).r_*(*v).diry_;
       const double kspl_z = (*v).r_*(*v).dirz_;      
-      
+
       container xon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
       int index_x = 0;
-      for (auto & s : vps) {
-        if ((*v)!=s) {
-          xon.put(index_x,s.x_,s.y_,s.z_);
+      for (std::vector<VoronoiPoint>::iterator s = vps.begin(); s != vps.end(); ++s) {
+        if ((*v)!=(*s)) {
+          xon.put(index_x,(*s).x_,(*s).y_,(*s).z_);
         }
         ++index_x;
       }
-      xon.put(index_self,vx,oy,oz);
+      xon.put(index_self,(*v).tpnx_,(*v).tpoy_,(*v).tpoz_);
       const double tot_eng_x = retTotalEnergy(xon, value_tarea);
       if (rktime == 0) {
         (*v).xn1_ = -alpha*(tot_eng_x-totalenergy_base)/dps + kspl_x;
       } else {
         (*v).xn2_ = -alpha*(tot_eng_x-totalenergy_base)/dps + kspl_x;
       }
-      
+
       container yon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
       int index_y = 0;
-      for (auto & s : vps) {
-        if ((*v)!=s) {
-          yon.put(index_y,s.x_,s.y_,s.z_);
+      for (std::vector<VoronoiPoint>::iterator s = vps.begin(); s != vps.end(); ++s) {
+        if ((*v)!=(*s)) {
+          yon.put(index_y,(*s).x_,(*s).y_,(*s).z_);
         }
         ++index_y;
       }      
-      yon.put(index_self,ox,vy,oz);
+      yon.put(index_self,(*v).tpox_,(*v).tpny_,(*v).tpoz_);
       const double tot_eng_y = retTotalEnergy(yon, value_tarea);
       if (rktime==0) {
         (*v).yn1_ = -alpha*(tot_eng_y-totalenergy_base)/dps + kspl_y;
       } else {
         (*v).yn2_ = -alpha*(tot_eng_y-totalenergy_base)/dps + kspl_y;
       }
-      
+
       container zon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
       int index_z = 0;
-      for (auto & s : vps) {
-        if ((*v)!=s) {
-          zon.put(index_z,s.x_,s.y_,s.z_);
+      //int vjz = 0;
+      for (std::vector<VoronoiPoint>::iterator s = vps.begin(); s != vps.end(); ++s) {
+        if ((*v)!=(*s)) {
+          zon.put(index_z,(*s).x_,(*s).y_,(*s).z_);
         }
         ++index_z;
       }
-      zon.put(index_self,ox,oy,vz);
+      zon.put(index_self,(*v).tpox_,(*v).tpoy_,(*v).tpnz_);
       const double tot_eng_z = retTotalEnergy(zon, value_tarea);
       if (rktime == 0) {
         (*v).zn1_ = -alpha*(tot_eng_z-totalenergy_base)/dps + kspl_z;
       } else {
-        (*v).zn1_ = -alpha*(tot_eng_z-totalenergy_base)/dps + kspl_z;
+        (*v).zn2_ = -alpha*(tot_eng_z-totalenergy_base)/dps + kspl_z;
       }
       
       ++index_self;
