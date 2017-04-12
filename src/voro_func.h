@@ -197,12 +197,18 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
 
 }
 
-void restoreHSTData(container& con, vector<double>& hst_data, const double khst_tics) {
+void writeHSTData(container& con, ofstream& ofsHST) {
   c_loop_all cmh(con);
   voronoicell_neighbor ch;
   if (cmh.start()) do if (con.compute_cell(ch,cmh)) {
-        hst_data[ch.number_of_faces()] += khst_tics;
+        ofsHST<<ch.volume()<<" "<<ch.number_of_faces()<<" "
+              <<ch.number_of_edges()<<" "<<ch.p<<" ";
+        vector<double> areas;
+        ch.face_areas(areas);
+        for (auto & ar : areas) ofsHST<<ar<<" ";
+        ofsHST<<endl;
       } while (cmh.inc());
+  ofsHST<<endl;
 }
 
 void writeMSDData(const int time, const int starttime, vector<VoronoiPoint>& vps, const Boundary* bdr, ofstream& ofsMSD) {

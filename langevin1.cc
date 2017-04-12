@@ -76,7 +76,7 @@ int main(int argc, char **argv) {
   const string kstr_hst = datdirectoryname+"HST"+kstr_param+".dat";
   ofstream hst;
   hst.open(kstr_hst);
-  vector<double> hstdata(40,0.0);
+  //vector<double> hstdata(40,0.0);
   
   //initialize random function
   mt.seed(kint_smpl);
@@ -101,10 +101,8 @@ int main(int argc, char **argv) {
   // Randomly add particles into the container
   setInitialConfiguration(con, vp, bd, mt);
 
-  con.print_custom("%i %v","packing.custom3");
-
   const int kmsdstarttime = kendtime/20;
-  const double khsttics = 1.0/( (double)(particles*(kendtime-kmsdstarttime)) ); 
+  //const double khsttics = 1.0/( (double)(particles*(kendtime-kmsdstarttime)) ); 
 
   for (int time = 0; time != kendtime; ++time) {
 
@@ -119,11 +117,12 @@ int main(int argc, char **argv) {
                    true,true,true,8);
      setContainer(don, vp);
 
-     restoreHSTData(don,hstdata,khsttics);
 
      writeMSDData(time,kmsdstarttime,vp,bd,msd);
 
      if (time%5 == 0) {
+        writeHSTData(don,hst);
+       
         string stime(to_string(time/5));
         string kstr_p = datdirectoryname+stime+kstr_param+"point.dat";
         string kstr_v = datdirectoryname+stime+kstr_param+"edges.dat";
@@ -148,13 +147,6 @@ int main(int argc, char **argv) {
      }
   }
   msd.close();
-
-  int hi = 0;
-  for (auto & h : hstdata) {
-    hst<<hi<<" "<<h<<endl;
-    ++hi;
-  }
-  hst<<endl;
   hst.close();
 
   delete bd;
