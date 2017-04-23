@@ -197,7 +197,8 @@ void execLangevinStep(container& base_con, vector<VoronoiPoint>& vps, const Boun
 
 }
 
-void writeHSTData(container& con, ofstream& ofsHST) {
+void writeHSTData(const int time, const int period, container& con, ofstream& ofsHST) {
+  if (time%period != 0) return;
   c_loop_all cmh(con);
   voronoicell_neighbor ch;
   if (cmh.start()) do if (con.compute_cell(ch,cmh)) {
@@ -237,5 +238,31 @@ void writeMSDData(const int time, const int starttime, vector<VoronoiPoint>& vps
   
 }
 
-  
+void writeSnapShotFile(const int time, const int period, container& cont, const vector<VoronoiPoint>& vps, const Boundary* bdr, const string datdirectoryname, const string imgdirectoryname, const string parasetnames) {
+  if (time%period != 0) return;
+
+  const string stime(to_string(time/5));
+  const string kstr_p = datdirectoryname+stime+parasetnames+"point.dat";
+  const string kstr_v = datdirectoryname+stime+parasetnames+"edges.dat";
+
+  ofstream pf;
+  pf.open(kstr_p.c_str());
+  for (const auto& v : vps) pf<<v.x_<<" "<<v.y_<<" "<<v.z_<<" "<<v.dirx_<<" "<<v.diry_<<" "<<v.dirz_<<endl;
+  pf.close();
+  cont.draw_cells_gnuplot(kstr_v.c_str());
+
+  const string kstr_pvj = imgdirectoryname+stime+parasetnames+"pointedges.png";
+
+  FILE* gp;
+
+  gp = popen("gnuplot -persist","w");
+  fprintf(gp, "set term png size 1200, 1200\n");
+
+  fprintf(gp, "set output \"%s\" \n", kstr_pvj.c_str());
+  fprintf(gp, "sp[%f:%f][%f:%f][%f:%f]\"%s\" u 1:2:3:(0.3*$4):(0.3*$5):(0.3*$6) w vector lw 2 lc rgb \"purple\" notitle, \"%s\" u 1:2:3 w l lw 1 lc rgbcolor \"gray70\" notitle \n", bdr->xmin_, bdr->xmax_, bdr->ymin_, bdr->ymax_, bdr->zmin_, bdr->zmax_, kstr_p.c_str(), kstr_v.c_str());
+  fprintf(gp, "set output\n");
+  pclose(gp);
+
+}
+
 #endif

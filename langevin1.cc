@@ -119,33 +119,10 @@ int main(int argc, char **argv) {
 
 
      writeMSDData(time,kmsdstarttime,vp,bd,msd);
-
-     if (time%5 == 0) {
-        writeHSTData(don,hst);
-       
-        string stime(to_string(time/5));
-        string kstr_p = datdirectoryname+stime+kstr_param+"point.dat";
-        string kstr_v = datdirectoryname+stime+kstr_param+"edges.dat";
-        ofstream pf;
-        pf.open(kstr_p.c_str());
-        for (const auto& v : vp) pf<<v.x_<<" "<<v.y_<<" "<<v.z_<<" "<<v.dirx_<<" "<<v.diry_<<" "<<v.dirz_<<endl;
-        pf.close();
-        //don.draw_particles(kstr_p.c_str());
-        don.draw_cells_gnuplot(kstr_v.c_str());
-
-        string kstr_pvj = imagedirectoryname+stime+kstr_param+"pointedges.png";
-      
-        FILE* gp;
-        gp = popen("gnuplot -persist","w");
-        fprintf(gp, "set term png size 1200, 1200\n");
-
-        fprintf(gp, "set output \"%s\" \n", kstr_pvj.c_str());
-        fprintf(gp, "sp[%f:%f][%f:%f][%f:%f]\"%s\" u 1:2:3:(0.3*$4):(0.3*$5):(0.3*$6) w vector notitle, \"%s\" u 1:2:3 w l lw 0.2 lc rgbcolor \"gray50\" notitle \n", bd->xmin_, bd->xmax_, bd->ymin_, bd->ymax_, bd->zmin_, bd->zmax_, kstr_p.c_str(), kstr_v.c_str());
-        fprintf(gp, "set output\n");
-        pclose(gp);
-      
-     }
+     writeHSTData(time, 5, don,hst);
+     writeSnapShotFile(time, 5, don, vp, bd, datdirectoryname, imagedirectoryname, kstr_param);
   }
+
   msd.close();
   hst.close();
 
