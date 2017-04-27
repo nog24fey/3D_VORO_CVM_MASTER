@@ -102,11 +102,11 @@ int main(int argc, char **argv) {
   setInitialConfiguration(con, vp, bd, mt);
 
   const int kmsdstarttime = kendtime/20;
-  //const double khsttics = 1.0/( (double)(particles*(kendtime-kmsdstarttime)) ); 
+  bool finishflag = false;
 
   for (int time = 0; time != kendtime; ++time) {
 
-     for( int ts = 0; ts != ktimestep; ++ts) {
+     for ( int ts = 0; ts != ktimestep; ++ts) {
         cout<<time<<" "<<ts<<endl;
         container eon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
 		  true,true,true,8);
@@ -118,9 +118,10 @@ int main(int argc, char **argv) {
      setContainer(don, vp);
 
 
-     writeMSDData(time,kmsdstarttime,vp,bd,msd);
+     writeMSDData(time, kmsdstarttime, vp, bd, msd, finishflag);
      writeHSTData(time, 5, don,hst);
      writeSnapShotFile(time, 5, don, vp, bd, datdirectoryname, imagedirectoryname, kstr_param);
+     if (finishflag) break;
   }
 
   msd.close();

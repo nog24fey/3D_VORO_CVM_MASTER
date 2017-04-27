@@ -212,7 +212,7 @@ void writeHSTData(const int time, const int period, container& con, ofstream& of
   ofsHST<<endl;
 }
 
-void writeMSDData(const int time, const int starttime, vector<VoronoiPoint>& vps, const Boundary* bdr, ofstream& ofsMSD) {
+void writeMSDData(const int time, const int starttime, vector<VoronoiPoint>& vps, const Boundary* bdr, ofstream& ofsMSD, bool finishflag) {
   if (time > starttime) {
 
     ofsMSD<<time-starttime<<" ";
@@ -225,6 +225,7 @@ void writeMSDData(const int time, const int starttime, vector<VoronoiPoint>& vps
     }
     //meandiff /= size;
     ofsMSD<<meandiff<<endl;
+    if ( meandiff > bdr->x_axe_leng_/4.0 ) finishflag = true;
     
   } else if (time == starttime) {
     
