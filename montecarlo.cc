@@ -1,10 +1,11 @@
 /*
 argv[1] directory name packing data files !!must be ended with "/" !!
 argv[2] directory name packing image files !!must be ended with "/" !!
-argv[3] target value of area; timed 0.01           eg. 300-1000
-argv[4] sample id; also used for random seed       eg. 0-10
-argv[5] force shorten MD steps                     eg. 100-1000
-argv[6] initial relaxation MD steps                eg. 10000(real)
+argv[3] target value of area; timed 0.01           eg. 3000-5000
+argv[4] energy ratio                               eg. 1-10000
+argv[5] sample id; also used for random seed       eg. 0-10
+argv[6] force shorten MD steps                     eg. 100-1000
+argv[7] initial relaxation MD steps                eg. 10000(real)
 */
 
 #include "./src/directorymake.h"
@@ -38,10 +39,12 @@ const int particles=6*6*6;
 int main(int argc, char **argv) {
   //system parameters
   const int kint_tarea = atoi(argv[3]);
-  const int kint_smpl = atoi(argv[4]);
+  const int kint_eratio = atoi(argv[4]);
+  const int kint_smpl = atoi(argv[5]);
   const double ktarea = 0.001*(double)kint_tarea;
-  const int kfsMDsteps = atoi(argv[5]);
-  const int kiniMDsteps = atoi(argv[6]);
+  const double keratio = 0.01*(double)kint_eratio;
+  const int kfsMDsteps = atoi(argv[6]);
+  const int kiniMDsteps = atoi(argv[7]);
 
   //data packing directories
   directoryMake(argv[1]);
@@ -51,10 +54,11 @@ int main(int argc, char **argv) {
 
   //filename settings
   const string kstr_tarea = "ar"+to_string(kint_tarea);
+  const string kstr_eratio = "er"+to_string(kint_eratio);
   const string kstr_smpl = "sm"+to_string(kint_smpl);
   const string kstr_iniMDsteps = "is"+to_string(kiniMDsteps);
   const string kstr_fsMDsteps = "fs"+to_string(kfsMDsteps);
-  const string kstr_param = kstr_tarea+kstr_smpl+kstr_iniMDsteps+kstr_fsMDsteps;
+  const string kstr_param = kstr_tarea+kstr_eratio+kstr_smpl+kstr_iniMDsteps+kstr_fsMDsteps;
 
   //open histgram dat file
   //const string kstr_hst = datdirectoryname+"MCHST"+kstr_param+".dat";
@@ -90,7 +94,7 @@ int main(int argc, char **argv) {
 
     container eon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
                   true,true,true,8);
-    execMonteCarloStep(eon, vp, bd, mt, ktarea, kdpos);
+    execMonteCarloStep(eon, vp, bd, mt, ktarea, keratio, kdpos);
 
     container don(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
                   true,true,true,8);

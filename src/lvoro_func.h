@@ -59,7 +59,7 @@ void readInitialConfiguration(container& con, vector<LVoronoiPoint>& vps, const 
   }
 }
 
-double retTotalEnergy(container& con, const double value_tarea) {
+double retTotalEnergy(container& con, const double value_tarea, const double value_eratio=1.0) {
 
   double totalenergy = 0.0;
 
@@ -68,7 +68,7 @@ double retTotalEnergy(container& con, const double value_tarea) {
   if(cm.start()) do if(con.compute_cell(cl,cm)) {
         double ve = (cl.volume()-1.0);
         double ae = (cl.surface_area()-value_tarea);
-        totalenergy += ve*ve+ae*ae;
+        totalenergy += ve*ve+ae*ae/value_eratio;
       } while (cm.inc());
 
   return totalenergy;
@@ -97,14 +97,14 @@ void renewPositions(vector<LVoronoiPoint>& vps, const Boundary* bdr) {
 
 }
 
-void execMonteCarloStep(container& base_con, vector<LVoronoiPoint>& vps, const Boundary* bdr, mt19937& mt, const double value_tarea, const double dps) {
+void execMonteCarloStep(container& base_con, vector<LVoronoiPoint>& vps, const Boundary* bdr, mt19937& mt, const double value_tarea, const double value_eratio, const double dps) {
   //prepare constants for speed
   const double xmin = bdr->xmin_; const double xmax = bdr->xmax_;
   const double ymin = bdr->ymin_; const double ymax = bdr->ymax_;
   const double zmin = bdr->zmin_; const double zmax = bdr->zmax_;
   const int nx = bdr->nx_; const int ny = bdr->ny_; const int nz = bdr->nz_;
 
-  const double alpha = 0.01;
+  const double alpha = 0.0001;
   
   normal_distribution<double> nml(0.0,1.0);
 
@@ -113,7 +113,7 @@ void execMonteCarloStep(container& base_con, vector<LVoronoiPoint>& vps, const B
     base_con.put(index,(*v).x_,(*v).y_,(*v).z_);
     ++index;
   }
-  const double totalenergy_base = retTotalEnergy(base_con, value_tarea);
+  const double totalenergy_base = retTotalEnergy(base_con, value_tarea, value_eratio);
 
   int index_self = 0;
   for (std::vector<LVoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) { 
@@ -130,7 +130,7 @@ void execMonteCarloStep(container& base_con, vector<LVoronoiPoint>& vps, const B
       ++index_x;
     }
     xon.put(index_self,(*v).xn1_,(*v).y_,(*v).z_);
-    const double tot_eng_x = retTotalEnergy(xon, value_tarea);
+    const double tot_eng_x = retTotalEnergy(xon, value_tarea, value_eratio);
     (*v).xn2_ = -alpha*(tot_eng_x-totalenergy_base)/dps ;
 
     container yon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
@@ -142,7 +142,7 @@ void execMonteCarloStep(container& base_con, vector<LVoronoiPoint>& vps, const B
       ++index_y;
     }      
     yon.put(index_self,(*v).x_,(*v).yn1_,(*v).z_);
-    const double tot_eng_y = retTotalEnergy(yon, value_tarea);
+    const double tot_eng_y = retTotalEnergy(yon, value_tarea, value_eratio);
     (*v).yn2_ = -alpha*(tot_eng_y-totalenergy_base)/dps;
 
     container zon(xmin,xmax,ymin,ymax,zmin,zmax,nx,ny,nz,true,true,true,8);
@@ -154,7 +154,7 @@ void execMonteCarloStep(container& base_con, vector<LVoronoiPoint>& vps, const B
       ++index_z;
     }
     zon.put(index_self,(*v).x_,(*v).y_,(*v).zn1_);
-    const double tot_eng_z = retTotalEnergy(zon, value_tarea);
+    const double tot_eng_z = retTotalEnergy(zon, value_tarea, value_eratio);
     (*v).zn2_ = -alpha*(tot_eng_z-totalenergy_base)/dps;
 
     ++index_self;
