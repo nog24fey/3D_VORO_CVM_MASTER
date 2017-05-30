@@ -105,14 +105,16 @@ void execMonteCarloStep(container& base_con, vector<LVoronoiPoint>& vps, const B
   const int nx = bdr->nx_; const int ny = bdr->ny_; const int nz = bdr->nz_;
 
   double alpha;
-  if ( value_eratio >= 1.0) {
+  if ( value_eratio >= 10.0) {
+    alpha = 0.1;
+  } else if ( value_eratio >= 1.0) {
     alpha = 0.01;
   } else if ( value_eratio >= 0.1) {
     alpha = 0.001;
   } else {
     alpha = 0.0001;
   }
-  
+
   normal_distribution<double> nml(0.0,1.0);
 
   int index = 0;
