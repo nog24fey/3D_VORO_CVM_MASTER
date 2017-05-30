@@ -1,5 +1,5 @@
-#ifndef VORO_FUNC_H_
-#define VORO_FUNC_H_ 1
+#ifndef LVORO_FUNC_H_
+#define LVORO_FUNC_H_ 1
 
 #include "../voro++/voro++.hh"
 #include "./lvoronoipoint.h"
@@ -37,7 +37,7 @@ void setContainer(container& con, vector<LVoronoiPoint>& vps) {
 void setInitialConfiguration(container& con, vector<LVoronoiPoint>& vps, const Boundary* bdr, mt19937& mt) {
 
   uniform_real_distribution<double> randm(-1.0,1.0);
-  
+
   int index = 0;
   for (std::vector<LVoronoiPoint>::iterator v = vps.begin(); v != vps.end(); ++v) {
 
