@@ -1,6 +1,6 @@
 /*
-argv[1] directory name packing data files !!must be ended with "/" !!
-argv[2] directory name packing image files !!must be ended with "/" !!
+argv[1] directory name packing input data files !!must be ended with "/" !!
+argv[2] directory name packing output data files !!must be ended with "/" !!
 argv[3] target value of area; timed 0.01           eg. 3000-5000
 argv[4] energy ratio                               eg. 1-10000
 argv[5] sample id; also used for random seed       eg. 0-10
@@ -61,7 +61,7 @@ int main(int argc, char **argv) {
   const string kstr_param = kstr_tarea+kstr_eratio+kstr_smpl+kstr_iniMDsteps+kstr_fsMDsteps;
 
   const string lastinp = "point.dat";
-  const string inp = inputdatdirectoryname+to_string(500)+kstr_param+lastinp;
+  const string inp = inputdatdirectoryname+to_string(4000)+kstr_param+lastinp;
 
   //open histgram dat file
   //const string kstr_hst = datdirectoryname+"MCHST"+kstr_param+".dat";
@@ -82,48 +82,62 @@ int main(int argc, char **argv) {
   //boundary
   Boundary* bd = new Boundary(3.0);
   //internal variables
-  vector<LVoronoiPoint> vp;
+  vector<LVoronoiPoint> vpo;
   for( int i = 0; i != particles; ++i) {
-    vp.push_back(LVoronoiPoint());
+    vpo.push_back(LVoronoiPoint());
   }
 
   container con(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
 		true,true,true,8);
 
-  readData( inp, vp, con, particles);
+  readData( inp, vpo, con, particles);
 
   vector<int> plist;
   makeTransitionPairs( con, plist, particles);
   for ( auto p : plist) {
+    vector<LVoronoiPoint> vp;
+    copyVpstoVps(vpo, vp);
     const int i = p/particles;
     const int j = p%particles;
-    cout<< i << " " << j << " " << checkPairness( con, i, j) << endl;
+
+    container don(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
+                    true,true,true,8);
+    linkVPtoContainer(vp,don);
+    eng<< i << " " << j << " ";
+
+    double conjugatearea0;
+    bool isconjugate = getAreaBetweenPairs(don,i,j,conjugatearea0);
+    double totenergy0 = retTotalEnergy(don, ktarea, keratio);
+    eng<< conjugatearea0/conjugatearea0 << " " << totenergy0/totenergy0 << endl;
+    while ( isconjugate) {
+      vector<double> rr;
+      getDirectionVectorBetweenPairs(i,j,vp,bd,rr);
+
+      awayPairsSlowly(i,j,vp,bd,0.05);
+      for ( int ts = 0; ts != 10; ++ts) {
+        container eon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
+                    true,true,true,8);
+        execMonteCarloStepExceptPairs(i,j,eon,vp,bd,mt,ktarea,keratio,kdpos);
+      }
+
+      container fon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
+                    true,true,true,8);
+      linkVPtoContainer(vp,fon);
+      if ( checkPairness( fon, i, j)){
+        double conjugatearea;
+        isconjugate = getAreaBetweenPairs(fon,i,j,conjugatearea);
+        double totenergy = retTotalEnergy(fon,ktarea,keratio);
+        eng<< i <<" "<< j <<" " << conjugatearea/conjugatearea0 << " " << totenergy-totenergy0 <<endl;
+      } else {
+        break;
+      }
+
+    }
   }
   cout<< plist.size() <<endl;
 
-  // // Randomly add particles into the container
-  // setInitialConfiguration(con, vp, bd, mt);
-  // double totalenergy = retTotalEnergy(con, ktarea);
-  // eng<<0<<" "<<totalenergy<<endl;
-  // for (int time = 0; time != kiniMDsteps; ++time) {
-
-  //   container eon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
-  //                 true,true,true,8);
-  //   execMonteCarloStep(eon, vp, bd, mt, ktarea, keratio, kdpos);
-
-  //   container don(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
-  //                 true,true,true,8);
-  //   setContainer(don, vp);
-
-  //   totalenergy = retTotalEnergy(don, ktarea);
-  //   eng<<time+1<<" "<<totalenergy<<endl;
-  //   //writeHSTData(time, 5, don,hst);
-  //   writeSnapShotFile(time+1, 5, don, vp, bd, datdirectoryname, imagedirectoryname, kstr_param);
-  // }
-
-  // //hst.close();
   eng.close();
 
   delete bd;
   return EXIT_SUCCESS;
- }
+}
