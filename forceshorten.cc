@@ -108,7 +108,7 @@ int main(int argc, char **argv) {
     double conjugatearea0;
     bool isconjugate = getAreaBetweenPairs(don,i,j,conjugatearea0);
     double totenergy0 = retTotalEnergy(don, ktarea, keratio);
-    eng<< conjugatearea0/conjugatearea0 << " " << totenergy0/totenergy0 << endl;
+    eng<< conjugatearea0/conjugatearea0 << " " << totenergy0-totenergy0 << " " << totenergy0 << endl;
     while ( isconjugate) {
       vector<double> rr;
       getDirectionVectorBetweenPairs(i,j,vp,bd,rr);
@@ -127,14 +127,14 @@ int main(int argc, char **argv) {
         double conjugatearea;
         isconjugate = getAreaBetweenPairs(fon,i,j,conjugatearea);
         double totenergy = retTotalEnergy(fon,ktarea,keratio);
-        eng<< i <<" "<< j <<" " << conjugatearea/conjugatearea0 << " " << totenergy-totenergy0 <<endl;
+        eng<< i <<" "<< j <<" " << conjugatearea/conjugatearea0 << " " << totenergy-totenergy0 << " " << totenergy-totenergy0 << endl;
       } else {
         break;
       }
 
     }
   }
-  cout<< plist.size() <<endl;
+  //cout<< plist.size() <<endl;
 
   eng.close();
 

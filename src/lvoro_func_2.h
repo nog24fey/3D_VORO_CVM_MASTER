@@ -92,6 +92,7 @@ bool checkPairness( container& con, const int pair1, const int pair2) {
         return false;
 
       } while (cmh.inc());
+  return false;//with care
 }
 
 /*
