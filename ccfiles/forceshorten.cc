@@ -114,7 +114,7 @@ int main(int argc, char **argv) {
       getDirectionVectorBetweenPairs(i,j,vp,bd,rr);
 
       awayPairsSlowly(i,j,vp,bd,0.05);
-      for ( int ts = 0; ts != 10; ++ts) {
+      for ( int ts = 0; ts != 20; ++ts) {
         container eon(bd->xmin_,bd->xmax_,bd->ymin_,bd->ymax_,bd->zmin_,bd->zmax_,bd->nx_,bd->ny_,bd->nz_,
                     true,true,true,8);
         execMonteCarloStepExceptPairs(i,j,eon,vp,bd,mt,ktarea,keratio,kdpos);
