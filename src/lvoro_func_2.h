@@ -77,8 +77,6 @@ bool checkPairness( container& con, const int pair1, const int pair2) {
   c_loop_all cmh(con);
   voronoicell_neighbor ch;
 
-  bool breaktag = false;
-
   if (cmh.start()) do if (con.compute_cell(ch, cmh)) {
         int id = cmh.pid();
         if ( id != pair1 ) continue;
